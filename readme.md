@@ -14,4 +14,4 @@ We will use the restful.js file to dynamically give commands to Postgres - based
 ### Dependencies
 - express
 - nodemon
-- 
+- pg
