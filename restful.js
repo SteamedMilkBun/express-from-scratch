@@ -25,24 +25,23 @@ app.get("/foods", (req, res, next) => {
     });
 });
 
-app.get("/foods/:index", (req, res, next) => {
-    const foods_id = Number.parseInt(req.params.index);
+app.get("/foods/:foods_id", (req, res, next) => {
+    const foods_id = Number.parseInt(req.params.foods_id);
 
     if (Number.isNaN(foods_id) || foods_id <= 0) {
-        console.log(`Dear adventurer, that's a bad request - ${req.params.index} is not a valid index!`);
-        res.sendStatus(400);
+        res.status(400).send(`${foods_id} is a bad request.`);
         return;
     }
 
-    console.log(`Yes dear customer, one moment while I look for what is in food id: ${foods_id}`)
+    console.log(`One moment while I look for what is in food id: ${foods_id}`)
     pool.query(`SELECT * FROM foods WHERE foods_id = $1`,[foods_id])
     .then((data) => {
         if (data.rows.length === 0) {
-            console.log(`I'm terribly sorry - nothing was found at food id: ${foods_id}`)
+            console.log(`I'm sorry - nothing was found at food id: ${foods_id}`)
             res.sendStatus(404);
             return;
         }
-        console.log(`Good choice! Here's what I found at foods id: ${foods_id}.`);
+        console.log(`Here's what I found:`);
         console.log(data.rows[0]);
         res.json(data.rows[0]);
     })
@@ -109,9 +108,66 @@ app.post("/foods", (req, res, next) => {
     })
 });
 
-// app.patch();
+app.patch("/foods/:foods_id", (req, res, next) => {
+    const foods_id = Number.parseInt(req.params.foods_id);
+    const foodName = req.body.foods_name;
+    const unitQuantity = (req.body.foods_quantity !== undefined) ? Number(req.body.foods_quantity) : null;
+    const hpRestored = (req.body.foods_hp_restored !== undefined) ? Number(req.body.foods_quantity) : null;
+    const price = (req.body.foods_price !== undefined) ? Number(req.body.foods_price) : null;
+    
+    if (Number.isNaN(foods_id)) {
+        console.log(`The foods id: ${foods_id} is a ${typeof foods_id}! I need a number so I can look in the right place.`);
+        res.sendStatus(400);
+        return;
+    }
 
-// app.delete();
+    console.log(`I want to make changes to foods id: ${foods_id}`);
+    console.log(`Turn it into name: ${foodName}, unit quantity: ${unitQuantity}, hp restored: ${hpRestored}, price: ${price}`);
+    console.log(`Null means no changes.`);
+
+    pool.query(`UPDATE foods SET
+                    foods_name = COALESCE($1, foods_name),
+                    foods_quantity = COALESCE($2, foods_quantity),
+                    foods_hp_restored = COALESCE($3, foods_hp_restored),
+                    foods_price = COALESCE($4, foods_price)
+                WHERE FOODS_ID = $5 RETURNING *`,
+                [foodName, unitQuantity, hpRestored, price, foods_id])
+    .then((data) => {
+        console.log(data.rows[0])
+        res.json(data.rows[0]);
+    })
+    .catch((err) => {
+        console.log(err);
+        res.sendStatus(500);
+    })
+});
+
+app.delete("/foods/:foods_id", (req, res, next) => {
+    const foods_id = Number.parseInt(req.params.foods_id);
+
+    if (Number.isNaN(foods_id)) {
+        console.log(`The foods id: ${foods_id} is a ${typeof foods_id}! I need a number so I can look in the right place.`);
+        res.sendStatus(400);
+        return;
+    }
+
+    pool.query(`DELETE FROM foods WHERE foods_id = $1 RETURNING *`, [foods_id])
+    .then((data) => {
+        if (data.rows.length === 0) {
+            console.log(`There's nothing at food id: ${foods_id} to remove.`);
+            res.sendStatus(404);
+            return;
+        } else {
+            console.log(`I have removed the item at food id: ${foods_id}:`)
+            console.log(data.rows[0]);
+            res.send(data.rows[0]);
+        }
+    })
+    .catch((err) => {
+        console.log(err);
+        res.sendStatus(500);
+    })
+});
 
 // app.use();
 
